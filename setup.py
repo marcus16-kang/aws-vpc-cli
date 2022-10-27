@@ -1,15 +1,24 @@
 from setuptools import setup, find_packages
 
-with open('README.md', 'r') as f:
-    long_description = f.read()
+requires = [
+    'ipaddr',
+    'prettytable',
+    'prompt-toolkit',
+    'pyfiglet',
+    'Pygments',
+    'PyInquirer',
+    'PyYAML',
+    'regex',
+    'six',
+    'wcwidth'
+]
 
 setup(
     name='vpc-cli',
     version='0.0.1',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
-    long_description=long_description,
-    long_description_content_type='text/markdown',
+    long_description=open('README.rst').read(),
     author_email='marcus16-kang@outlook.com',
     license='MIT',
     entry_points={
@@ -17,7 +26,11 @@ setup(
             'vpc-cli=vpc_cli.main:main'
         ]
     },
+    install_requires=requires,
     packages=find_packages(),
     python_requires='>=3.7',
-    url='https://github.com/marcus16-kang/vpc-stack-generator-cli'
+    url='https://github.com/marcus16-kang/vpc-stack-generator-cli',
+    project_urls={
+        'Source': 'https://github.com/marcus16-kang/vpc-stack-generator-cli'
+    }
 )
