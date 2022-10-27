@@ -4,8 +4,8 @@ import yaml
 class CreateYAML:
     resources = {}
     region = None
-    public_subnet_name = []
-    private_subnet_name = []
+    public_subnet_name = {}
+    private_subnet_name = {}
     protected_subnet_name = []
     rtb_name = []
 
@@ -65,7 +65,7 @@ class CreateYAML:
                         }
                     }
                 }
-                self.public_subnet_name.append({'cloudformation': 'PublicSubnet' + str(i), 'name': subnet['name']})
+                self.public_subnet_name[subnet['name']] = 'PublicSubnet' + str(i)
 
                 if set_k8s_tags:
                     self.resources['PublicSubnet' + str(i)]['Properties']['Tags'].append(
@@ -86,7 +86,8 @@ class CreateYAML:
                         }
                     }
                 }
-                self.private_subnet_name.append({'cloudformation': 'PrivateSubnet' + str(i), 'name': subnet['name']})
+                # self.private_subnet_name.append({'cloudformation': 'PrivateSubnet' + str(i), 'name': subnet['name']})
+                self.private_subnet_name[subnet['name']] = 'PrivateSubnet' + str(i)
 
                 if set_k8s_tags:
                     self.resources['PrivateSubnet' + str(i)]['Properties']['Tags'].append(
@@ -112,9 +113,9 @@ class CreateYAML:
 
     def create_igw(self, igw=None):
         self.resources['IGW'] = {
-            'ype': 'AWS::EC2::InternetGateway',
+            'Type': 'AWS::EC2::InternetGateway',
             'Properties': {
-                'Tags': [{'Name': igw}]
+                'Tags': [{'Key': 'Name', 'Value': igw}]
             }
         }
         self.resources['IGWAttachmentVPC'] = {
@@ -155,12 +156,12 @@ class CreateYAML:
             }
 
             # associate public subnets to public route table
-            for subnet_name in self.public_subnet_name:
-                self.resources[subnet_name['cloudformation'] + 'RouteTableAssociation'] = {
+            for _, subnet_cfn_name in self.public_subnet_name.items():
+                self.resources[subnet_cfn_name + 'RouteTableAssociation'] = {
                     'Type': 'AWS::EC2::SubnetRouteTableAssociation',
                     'Properties': {
                         'SubnetId': {
-                            'Ref': subnet_name['cloudformation']
+                            'Ref': subnet_cfn_name
                         },
                         'RouteTableId': {
                             'Ref': 'PublicRouteTable'
@@ -184,13 +185,14 @@ class CreateYAML:
                 }
 
                 # associate each private subnet to each private route table
-                subnet_cloudformation_name = next(
-                    item for item in self.private_subnet_name if item['name'] == rtb['subnet'])
-                self.resources[subnet_cloudformation_name['cloudformation'] + 'RouteTableAssociation'] = {
+                # subnet_cloudformation_name = next(
+                #     item for item in self.private_subnet_name if item['name'] == rtb['subnet'])
+                subnet_cfn_name = self.private_subnet_name[rtb['subnet']]
+                self.resources[subnet_cfn_name + 'RouteTableAssociation'] = {
                     'Type': 'AWS::EC2::SubnetRouteTableAssociation',
                     'Properties': {
                         'SubnetId': {
-                            'Ref': subnet_cloudformation_name['cloudformation']
+                            'Ref': subnet_cfn_name
                         },
                         'RouteTableId': {
                             'Ref': 'PrivateRouteTable' + str(i)
@@ -241,14 +243,16 @@ class CreateYAML:
             }
 
             # create nat gateway
+            subnet_cfn_name = self.public_subnet_name[_nat['subn' \
+                                                           'et']]
             self.resources['NAT' + str(i)] = {
                 'Type': 'AWS::EC2::NatGateway',
                 'Properties': {
                     'AllocationId': {
-                        'GetAtt': 'EIP' + str(i)
+                        'Fn::GetAtt': ['EIP' + str(i), 'AllocationId']
                     },
                     'SubnetId': {
-                        'Ref': _nat['subnet']
+                        'Ref': subnet_cfn_name
                     },
                     'Tags': [{'Key': 'Name', 'Value': _nat['name']}]
                 }
@@ -271,8 +275,8 @@ class CreateYAML:
                 }
             }
 
-    def create_s3_ep(self, s3_gateway_ep=None):
-        if s3_gateway_ep.get('route-table'):
+    def create_s3_ep(self, s3_gateway_ep):
+        if s3_gateway_ep and s3_gateway_ep.get('route-table'):
             rtb_list = []
 
             for rtb in s3_gateway_ep['route-table']:
