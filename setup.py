@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 requires = [
     'ipaddr',
     'prettytable',
-    'prompt-toolkit',
+    'prompt_toolkit==1.0.14',
     'pyfiglet',
     'Pygments',
     'PyInquirer',
@@ -15,7 +15,7 @@ requires = [
 
 setup(
     name='aws-vpc-cli',
-    version='0.0.1',
+    version='0.0.2',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
     author_email='marcus16-kang@outlook.com',
