@@ -1,16 +1,16 @@
 from setuptools import setup, find_packages
 
 requires = [
-    'ipaddr',
-    'prettytable',
-    'prompt_toolkit==1.0.14',
-    'pyfiglet',
-    'Pygments',
-    'PyInquirer',
-    'PyYAML',
-    'regex',
-    'six',
-    'wcwidth'
+    'ipaddr==2.2.0',
+    'prettytable==3.4.1',
+    'prompt-toolkit==1.0.14',
+    'pyfiglet==0.8.post1',
+    'Pygments==2.13.0',
+    'PyInquirer==1.0.3',
+    'PyYAML==6.0',
+    'regex==2022.9.13',
+    'six==1.16.0',
+    'wcwidth==0.2.5'
 ]
 
 setup(
@@ -26,7 +26,7 @@ setup(
         ]
     },
     install_requires=requires,
-    packages=find_packages(),
+    # packages=find_packages(),
     python_requires='>=3.7',
     url='https://github.com/marcus16-kang/vpc-stack-generator-cli',
     project_urls={
