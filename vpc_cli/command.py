@@ -1,13 +1,9 @@
-import re
-from PyInquirer import prompt, Separator
-from prompt_toolkit.validation import Validator, ValidationError
+from inquirer import prompt, List, Text, Confirm, Checkbox
 
 from vpc_cli.print_table import PrintTable
 from vpc_cli.create_yaml import CreateYAML
-from vpc_cli.tools import cidr_overlapped, get_azs, print_figlet
-
-vpc_cidr = None
-subnet_cidrs = []
+from vpc_cli.tools import get_azs, print_figlet
+from vpc_cli.validators import name_validator, vpc_cidr_validator, subnet_count_validator, subnet_cidr_validator
 
 
 class Command:
@@ -17,6 +13,7 @@ class Command:
         'name': None,
         'cidr': None
     }
+    subnet_cidrs = []
     public_subnet = []
     private_subnet = []
     protected_subnet = []
@@ -28,65 +25,6 @@ class Command:
     private_rtb = []
     protected_rtb = None
     s3_gateway_ep = None
-
-    # validators
-    class NameValidator(Validator):
-        def validate(self, document):
-            ok = len(document.text) > 0
-
-            if not ok:
-                raise ValidationError(
-                    message='Please enter the correct name.',
-                    cursor_position=len(document.text)
-                )
-
-    class VPCCidrValidator(Validator):
-        def validate(self, document):
-            ok = re.match(pattern=r'(?<!\d\.)(?<!\d)(?:\d{1,3}\.){3}\d{1,3}/\d{1,2}(?!\d|(?:\.\d))',
-                          string=document.text)
-
-            if not ok:
-                raise ValidationError(
-                    message='Please enter the correct CIDR.',
-                    cursor_position=len(document.text)
-                )
-
-    class SubnetCountValidator(Validator):
-        def validate(self, document):
-            ok = document.text.isdigit()
-
-            if not ok:
-                raise ValidationError(
-                    message='Please enter the number.',
-                    cursor_position=len(document.text)
-                )
-
-    class SubnetCidrValidator(Validator):
-        def validate(self, document):
-            ok = re.match(pattern=r'(?<!\d\.)(?<!\d)(?:\d{1,3}\.){3}\d{1,3}/\d{1,2}(?!\d|(?:\.\d))',
-                          string=document.text)
-            global vpc_cidr
-
-            if not ok:
-                raise ValidationError(
-                    message='Please enter the correct CIDR.',
-                    cursor_position=len(document.text)
-                )
-
-            elif not cidr_overlapped(vpc_cidr, document.text):
-                raise ValidationError(
-                    message='Subnet CIDR is not overlapped in VPC\'s CIDR.',
-                    cursor_position=len(document.text)
-                )
-
-            else:
-                global subnet_cidrs
-                for subnet_cidr in subnet_cidrs:
-                    if cidr_overlapped(subnet_cidr, document.text):
-                        raise ValidationError(
-                            message='CIDR Address overlaps with existing Subnet CIDR: {}.'.format(subnet_cidr),
-                            cursor_position=len(document.text)
-                        )
 
     # start command
     def __init__(self):
@@ -160,35 +98,29 @@ class Command:
 
     def choose_region(self):
         questions = [
-            {
-                'type': 'list',
-                'name': 'region',
-                'message': 'Choose region:',
-                'choices': [
-                    'us-east-1 (N. Virginia)',
-                    'us-east-2 (Ohio)',
-                    'us-west-1 (N. California)',
-                    'us-west-2 (Oregon)',
-                    Separator(),
-                    'ap-south-1 (Mumbai)',
-                    'ap-northeast-3 (Osaka)',
-                    'ap-northeast-2 (Seoul)',
-                    'ap-southeast-1 (Singapore)',
-                    'ap-southeast-2 (Sydney)',
-                    'ap-northeast-1 (Tokyo)',
-                    Separator(),
-                    'ca-central-1 (Canada Central)',
-                    Separator(),
-                    'eu-central-1 (Frankfurt)',
-                    'eu-west-1 (Ireland)',
-                    'eu-west-2 (London)',
-                    'eu-west-3 (Paris)',
-                    'eu-north-1 (Stockholm)',
-                    Separator(),
-                    'sa-east-1 (Sao Paulo)',
-                ],
-                'filter': lambda val: re.sub(pattern=r'\([^)]*\)', repl='', string=val).strip()
-            }
+            List(
+                name='region',
+                message='Choose region',
+                choices=[
+                    ('us-east-1 (N. Virginia)', 'us-east-1'),
+                    ('us-east-2 (Ohio)', 'us-east-2'),
+                    ('us-west-1 (N. California)', 'us-west-1'),
+                    ('us-west-2 (Oregon)', 'us-west-2'),
+                    ('ap-south-1 (Mumbai)', 'ap-south-1'),
+                    ('ap-northeast-3 (Osaka)', 'ap-northeast-3'),
+                    ('ap-northeast-2 (Seoul)', 'ap-northeast-2'),
+                    ('ap-southeast-1 (Singapore)', 'ap-southeast-1'),
+                    ('ap-southeast-2 (Sydney)', 'ap-southeast-2'),
+                    ('ap-northeast-1 (Tokyo)', 'ap-northeast-1'),
+                    ('ca-central-1 (Canada Central)', 'ca-central-1'),
+                    ('eu-central-1 (Frankfurt)', 'eu-central-1'),
+                    ('eu-west-1 (Ireland)', 'eu-west-1'),
+                    ('eu-west-2 (London)', 'eu-west-2'),
+                    ('eu-west-3 (Paris)', 'eu-west-3'),
+                    ('eu-north-1 (Stockholm)', 'eu-north-1'),
+                    ('sa-east-1 (Sao Paulo)', 'sa-east-1')
+                ]
+            )
         ]
 
         answer = prompt(questions=questions)
@@ -196,18 +128,16 @@ class Command:
 
     def set_vpc(self):
         questions = [
-            {
-                'type': 'input',
-                'name': 'name',
-                'message': 'VPC name:',
-                'validate': self.NameValidator
-            },
-            {
-                'type': 'input',
-                'name': 'cidr',
-                'message': 'VPC CIDR:',
-                'validate': self.VPCCidrValidator
-            }
+            Text(
+                name='name',
+                message='VPC name',
+                validate=lambda _, x: name_validator(x)
+            ),
+            Text(
+                name='cidr',
+                message='VPC CIDR',
+                validate=lambda _, x: vpc_cidr_validator(x)
+            )
         ]
 
         answer = prompt(questions=questions)
@@ -219,165 +149,157 @@ class Command:
 
     def set_public_subnet(self):
         questions = [
-            {
-                'type': 'confirm',
-                'name': 'required',
-                'message': 'Do you want to create PUBLIC SUBNET?',
-                'default': True
-            },
-            {
-                'type': 'input',
-                'name': 'count',
-                'message': 'How many subnets do you want to create?',
-                'validate': self.SubnetCountValidator,
-                'when': lambda answers: answers['required']
-            }
+            Confirm(
+                name='required',
+                message='Do you want to create PUBLIC SUBNET?',
+                default=True
+            )
         ]
 
         answer = prompt(questions=questions)
 
-        if answer['required']:  # required public subnets
+        # required public subnets
+        if answer['required']:
+            questions = [
+                Text(
+                    name='count',
+                    message='How many subnets do you want to create?',
+                    validate=lambda _, x: subnet_count_validator(x)
+                )
+            ]
+
+            answer = prompt(questions=questions)
+
             for i in range(0, int(answer['count'])):
                 questions = [
-                    {
-                        'type': 'input',
-                        'name': 'name',
-                        'message': 'Public Subnet {} name:'.format(i + 1),
-                        'validate': self.NameValidator
-                    },
-                    {
-                        'type': 'input',
-                        'name': 'cidr',
-                        'message': 'Public Subnet {} CIDR:'.format(i + 1),
-                        'validate': self.SubnetCidrValidator
-                    },
-                    {
-                        'type': 'list',
-                        'name': 'az',
-                        'message': 'Public Subnet {} AZ:'.format(i + 1),
-                        'choices': get_azs(self.region)
-                    }
+                    Text(
+                        name='name',
+                        message='Public Subnet {} name'.format(i + 1),
+                        validate=lambda _, x: name_validator(x)
+                    ),
+                    Text(
+                        name='cidr',
+                        message='Public Subnet {} CIDR'.format(i + 1),
+                        validate=lambda _, x: subnet_cidr_validator(x, self.vpc['cidr'], self.subnet_cidrs)
+                    ),
+                    List(
+                        name='az',
+                        message='Public Subnet {} AZ'.format(i + 1),
+                        choices=get_azs(self.region)
+                    )
                 ]
 
                 subnet_answer = prompt(questions=questions)
                 self.public_subnet.append(subnet_answer)
-
-                global subnet_cidrs
-                subnet_cidrs.append(subnet_answer['cidr'])
+                self.subnet_cidrs.append(subnet_answer['cidr'])
 
         else:  # not create public subnets
             return None
 
     def set_private_subnet(self):
         questions = [
-            {
-                'type': 'confirm',
-                'name': 'required',
-                'message': 'Do you want to create PRIVATE SUBNET?',
-                'default': True
-            },
-            {
-                'type': 'input',
-                'name': 'count',
-                'message': 'How many subnets do you want to create?',
-                'validate': self.SubnetCountValidator,
-                'when': lambda answers: answers['required']
-            }
+            Confirm(
+                name='required',
+                message='Do you want to create PRIVATE SUBNET?',
+                default=True
+            )
         ]
 
         answer = prompt(questions=questions)
 
-        if answer['required']:  # required private subnets
+        # required private subnets
+        if answer['required']:
+            questions = [
+                Text(
+                    name='count',
+                    message='How many subnets do you want to create?',
+                    validate=lambda _, x: subnet_count_validator(x)
+                )
+            ]
+
+            answer = prompt(questions=questions)
+
             for i in range(0, int(answer['count'])):
                 questions = [
-                    {
-                        'type': 'input',
-                        'name': 'name',
-                        'message': 'Private Subnet {} Name:'.format(i + 1),
-                        'validate': self.NameValidator
-                    },
-                    {
-                        'type': 'input',
-                        'name': 'cidr',
-                        'message': 'Private Subnet {} CIDR:'.format(i + 1),
-                        'validate': self.SubnetCidrValidator
-                    },
-                    {
-                        'type': 'list',
-                        'name': 'az',
-                        'message': 'Private Subnet {} AZ:'.format(i + 1),
-                        'choices': get_azs(self.region)
-                    }
+                    Text(
+                        name='name',
+                        message='Private Subnet {} name'.format(i + 1),
+                        validate=lambda _, x: name_validator(x)
+                    ),
+                    Text(
+                        name='cidr',
+                        message='Private Subnet {} CIDR'.format(i + 1),
+                        validate=lambda _, x: subnet_cidr_validator(x, self.vpc['cidr'], self.subnet_cidrs)
+                    ),
+                    List(
+                        name='az',
+                        message='Private Subnet {} AZ'.format(i + 1),
+                        choices=get_azs(self.region)
+                    )
                 ]
 
                 subnet_answer = prompt(questions=questions)
                 self.private_subnet.append(subnet_answer)
-
-                global subnet_cidrs
-                subnet_cidrs.append(subnet_answer['cidr'])
+                self.subnet_cidrs.append(subnet_answer['cidr'])
 
         else:  # not create private subnets
             return None
 
     def set_protected_subnet(self):
         questions = [
-            {
-                'type': 'confirm',
-                'name': 'required',
-                'message': 'Do you want to create PROTECTED SUBNET?',
-                'default': False
-            },
-            {
-                'type': 'input',
-                'name': 'count',
-                'message': 'How many subnets do you want to create?',
-                'validate': self.SubnetCountValidator,
-                'when': lambda answers: answers['required']
-            }
+            Confirm(
+                name='required',
+                message='Do you want to create PROTECTED SUBNET?',
+                default=False
+            )
         ]
 
         answer = prompt(questions=questions)
 
         if answer['required']:  # required protected subnets
+            questions = [
+                Text(
+                    name='count',
+                    message='How many subnets do you want to create?',
+                    validate=lambda _, x: subnet_count_validator(x)
+                )
+            ]
+
+            answer = prompt(questions=questions)
+
             for i in range(0, int(answer['count'])):
                 questions = [
-                    {
-                        'type': 'input',
-                        'name': 'name',
-                        'message': 'Protected Subnet {} Name:'.format(i + 1),
-                        'validate': self.NameValidator
-                    },
-                    {
-                        'type': 'input',
-                        'name': 'cidr',
-                        'message': 'Protected Subnet {} CIDR:'.format(i + 1),
-                        'validate': self.SubnetCidrValidator
-                    },
-                    {
-                        'type': 'list',
-                        'name': 'az',
-                        'message': 'Protected Subnet {} AZ:'.format(i + 1),
-                        'choices': get_azs(self.region)
-                    }
+                    Text(
+                        name='name',
+                        message='Protected Subnet {} name'.format(i + 1),
+                        validate=lambda _, x: name_validator(x)
+                    ),
+                    Text(
+                        name='cidr',
+                        message='Protected Subnet {} CIDR'.format(i + 1),
+                        validate=lambda _, x: subnet_cidr_validator(x, self.vpc['cidr'], self.subnet_cidrs)
+                    ),
+                    List(
+                        name='az',
+                        message='Protected Subnet {} AZ'.format(i + 1),
+                        choices=get_azs(self.region)
+                    )
                 ]
 
                 subnet_answer = prompt(questions=questions)
                 self.protected_subnet.append(subnet_answer)
-
-                global subnet_cidrs
-                subnet_cidrs.append(subnet_answer['cidr'])
+                self.subnet_cidrs.append(subnet_answer['cidr'])
 
         else:  # not create protected subnets
             return None
 
     def set_subnet_k8s_tags(self):
         questions = [
-            {
-                'type': 'confirm',
-                'name': 'k8s-tag',
-                'message': 'Do you want to create tags for Kubernetes?',
-                'default': False
-            }
+            Confirm(
+                name='k8s-tag',
+                message='Do you want to create tags for Kubernetes?',
+                default=False
+            )
         ]
 
         answer = prompt(questions=questions)
@@ -385,12 +307,11 @@ class Command:
 
     def set_internet_gateway(self):
         questions = [
-            {
-                'type': 'input',
-                'name': 'name',
-                'message': 'Type Internet Gateway name:',
-                'validate': self.NameValidator
-            }
+            Text(
+                name='name',
+                message='Type Internet Gateway name',
+                validate=lambda _, x: name_validator(x)
+            )
         ]
 
         answer = prompt(questions=questions)
@@ -399,12 +320,11 @@ class Command:
     def set_elastic_ip(self):
         for i in range(0, len(self.private_subnet)):
             questions = [
-                {
-                    'type': 'input',
-                    'name': 'name',
-                    'message': 'Elastic IP {} name:'.format(i + 1),
-                    'validate': self.NameValidator
-                }
+                Text(
+                    name='name',
+                    message='Elastic IP {} name'.format(i + 1),
+                    validate=lambda _, x: name_validator(x)
+                )
             ]
 
             answer = prompt(questions=questions)
@@ -413,27 +333,25 @@ class Command:
     def set_nat_gateway(self):
         for i in range(0, len(self.private_subnet)):
             questions = [
-                {
-                    'type': 'input',
-                    'name': 'name',
-                    'message': 'NAT Gateway {} name:'.format(i + 1),
-                    'validate': self.NameValidator
-                },
-                {
-                    'type': 'list',
-                    'name': 'subnet',
-                    'message': 'NAT Gateway {} subnet:'.format(i + 1),
-                    'choices': ['{} ({} {})'.format(d['name'], d['cidr'], d['az']) for d in self.public_subnet],
-                    'filter': lambda val: re.sub(pattern=r'\([^)]*\)', repl='', string=val).strip(),
-                    'default': i + 1
-                },
-                {
-                    'type': 'list',
-                    'name': 'eip',
-                    'message': 'NAT Gateway {} elastic ip:'.format(i + 1),
-                    'choices': self.eip,
-                    'default': i + 1
-                }
+                Text(
+                    name='name',
+                    message='NAT Gateway {} name'.format(i + 1),
+                    validate=lambda _, x: name_validator(x)
+                ),
+                List(
+                    name='subnet',
+                    message='NAT Gateway {} subnet'.format(i + 1),
+                    choices=[
+                        ('{} ({} {})'.format(d['name'], d['cidr'], d['az']), d['name']) for d in self.public_subnet
+                    ],
+                    default=i + 1
+                ),
+                List(
+                    name='eip',
+                    message='NAT Gateway {} elastic ip'.format(i + 1),
+                    choices=self.eip,
+                    default=i + 1
+                )
             ]
 
             answer = prompt(questions=questions)
@@ -441,12 +359,11 @@ class Command:
 
     def set_public_rtb(self):
         questions = [
-            {
-                'type': 'input',
-                'name': 'name',
-                'message': 'Public Route Table name:',
-                'validate': self.NameValidator
-            }
+            Text(
+                name='name',
+                message='Public Route Table name',
+                validate=lambda _, x: name_validator(x)
+            )
         ]
 
         answer = prompt(questions=questions)
@@ -455,29 +372,27 @@ class Command:
     def set_private_rtb(self):
         for i in range(0, len(self.private_subnet)):
             questions = [
-                {
-                    'type': 'input',
-                    'name': 'name',
-                    'message': 'Private Route Table {} name:'.format(i + 1),
-                    'validate': self.NameValidator
-                },
-                {
-                    'type': 'list',
-                    'name': 'subnet',
-                    'message': 'Private Route Table {} subnet:'.format(i + 1),
-                    'choices': ['{} ({} {})'.format(d['name'], d['cidr'], d['az']) for d in self.private_subnet],
-                    'filter': lambda val: re.sub(pattern=r'\([^)]*\)', repl='', string=val).strip()
-                }
+                Text(
+                    name='name',
+                    message='Private Route Table {} name'.format(i + 1),
+                    validate=lambda _, x: name_validator(x)
+                ),
+                List(
+                    name='subnet',
+                    message='Private Route Table {} subnet'.format(i + 1),
+                    choices=[
+                        ('{} ({} {})'.format(d['name'], d['cidr'], d['az']), d['name']) for d in self.private_subnet
+                    ]
+                )
             ]
 
             # skip choosing nat gateway weh public subnet hasn't nothing
             if len(self.public_subnet):
-                questions.append({
-                    'type': 'list',
-                    'name': 'nat',
-                    'message': 'Private Route Table {} nat gateway:'.format(i + 1),
-                    'choices': self.nat
-                })
+                questions.append(List(
+                    name='nat',
+                    message='Private Route Table {} nat gateway'.format(i + 1),
+                    choices=[d['name'] for d in self.nat]
+                ))
             else:
                 pass
 
@@ -486,12 +401,11 @@ class Command:
 
     def set_protected_rtb(self):
         questions = [
-            {
-                'type': 'input',
-                'name': 'name',
-                'message': 'Protected Route Table name:',
-                'validate': self.NameValidator
-            }
+            Text(
+                name='name',
+                message='Protected Route Table name',
+                validate=lambda _, x: name_validator(x)
+            )
         ]
 
         answer = prompt(questions=questions)
@@ -511,30 +425,26 @@ class Command:
             route_table_list.append({'name': self.protected_rtb})
 
         questions = [
-            {
-                'type': 'confirm',
-                'name': 'required',
-                'message': 'Do you want to create S3 GATEWAY ENDPOINT?',
-                'default': True
-            },
-            {
-                'type': 'input',
-                'name': 'name',
-                'message': 'S3 Gateway Endpoint name:',
-                'validate': self.NameValidator,
-                'when': lambda answers: answers['required']
-            },
-            {
-                'type': 'checkbox',
-                'name': 'route-table',
-                'message': 'Select Route Tables:',
-                'choices': route_table_list,
-                'when': lambda answers: answers['required']
-            }
+            Confirm(
+                name='required',
+                message='Do you want to create S3 GATEWAY ENDPOINT?',
+                default=True
+            )
         ]
 
         answer = prompt(questions=questions)
-        self.s3_gateway_ep = answer
+
+        if answer['required']:
+            questions = [
+                Checkbox(
+                    name='route-table',
+                    message='Select Route Tables',
+                    choices=[d['name'] for d in route_table_list]
+                )
+            ]
+
+            answer = prompt(questions=questions)
+            self.s3_gateway_ep = answer
 
     def print_tables(self):
         print_table = PrintTable()

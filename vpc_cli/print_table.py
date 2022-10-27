@@ -99,12 +99,12 @@ class PrintTable:
     ):
         self.table.clear()
         self.table.title = 'S3 Gateway Endpoint'
-        self.table.field_names = ['Name', 'Route Table']
+        self.table.field_names = ['Route Table']
 
-        if s3_gateway_ep['required']:
+        if s3_gateway_ep and s3_gateway_ep.get('route-table'):
             for route_table in s3_gateway_ep['route-table']:
-                self.table.add_row([s3_gateway_ep['name'], route_table])
+                self.table.add_row([route_table])
         else:
-            self.table.add_row(['None', 'None'])
+            self.table.add_row(['None'])
 
         print(self.table)
