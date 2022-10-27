@@ -256,7 +256,8 @@ class CreateYAML:
 
             # routing
             nat_rtb_name = next(item for item in private_rtb if item['nat'] == _nat['name'])
-            rtb_cfn_name = next(item for item in self.rtb_name if item['name'] == nat_rtb_name['name'])['cloudformation']
+            rtb_cfn_name = next(item for item in self.rtb_name if item['name'] == nat_rtb_name['name'])[
+                'cloudformation']
             self.resources['{}RouteNAT{}'.format(rtb_cfn_name, str(i))] = {
                 'Type': 'AWS::EC2::Route',
                 'Properties': {
