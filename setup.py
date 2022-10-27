@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='vpc-cli',
@@ -12,7 +12,7 @@ setup(
             'vpc-cli=vpc_cli.main:main'
         ]
     },
-    requires=[
-
-    ]
+    packages=find_packages(),
+    python_requires='>=3.7',
+    url='https://github.com/marcus16-kang/vpc-stack-generator-cli'
 )
