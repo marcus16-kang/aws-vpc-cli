@@ -14,7 +14,7 @@ requires = [
 ]
 
 setup(
-    name='vpc-cli',
+    name='aws-vpc-cli',
     version='0.0.1',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
