@@ -1,9 +1,12 @@
+import boto3
 from inquirer import prompt, List, Text, Confirm, Checkbox
+from botocore.config import Config
 
 from vpc_cli.print_table import PrintTable
 from vpc_cli.create_yaml import CreateYAML
 from vpc_cli.tools import get_azs, print_figlet
-from vpc_cli.validators import name_validator, vpc_cidr_validator, subnet_count_validator, subnet_cidr_validator
+from vpc_cli.validators import name_validator, vpc_cidr_validator, subnet_count_validator, subnet_cidr_validator, \
+    stack_name_validator
 
 
 class Command:
@@ -466,3 +469,37 @@ class Command:
         print_table.print_igw(igw=self.igw)
         print_table.print_nat(nat=self.nat)
         print_table.print_s3_ep(s3_gateway_ep=self.s3_gateway_ep)
+
+    def create_stack(self):
+        questions = [
+            Confirm(
+                name='deploy',
+                message='Do you want to deploy stack in \033[1m\033[96m{}\033[0mtest?'.format(self.region),
+                default=True
+            )
+        ]
+
+        answer = prompt(questions)
+
+        if answer['deploy']:
+            questions = [
+                Text(
+                    name='stack-name',
+                    message='Type your stack name',
+                    validate=lambda _, x: stack_name_validator(x, self.region)
+                )
+            ]
+
+            answer = prompt(questions)
+
+            try:
+                client = boto3.client('cloudformation', config=Config(region_name=self.region))
+
+                response = client.create_stack(
+                    StackName=answer['stack-name'],
+                    TemplateBody='file://template.yaml'
+                )
+                stack_id = response['StackId']
+
+            except Exception as e:
+                print(e)
