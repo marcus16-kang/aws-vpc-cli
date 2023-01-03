@@ -2,11 +2,27 @@ from inquirer import prompt, List, Text, Confirm, Checkbox
 
 from vpc_cli.print_table import PrintTable
 from vpc_cli.create_yaml import CreateYAML
-from vpc_cli.tools import get_azs, print_figlet
+from vpc_cli.deploy_boto3 import DeployBoto3
+from vpc_cli.tools import get_regions, get_azs, print_figlet
 from vpc_cli.validators import name_validator, vpc_cidr_validator, subnet_count_validator, subnet_cidr_validator
 
 
+def interrupt(func):
+    def wrapper():
+        try:
+            func()
+
+        except KeyboardInterrupt:
+            print('User cancelled')
+
+            return 0
+
+    return wrapper
+
+
 class Command:
+    az_list = []
+
     # variables
     region = None
     vpc = {
@@ -29,6 +45,7 @@ class Command:
     # start command
     def __init__(self):
         print_figlet()
+
         self.choose_region()
         self.set_vpc()
         self.set_public_subnet()
@@ -79,52 +96,53 @@ class Command:
         # print tables
         self.print_tables()
 
-        # create template yaml file
-        yaml_file = CreateYAML(
-            region=self.region,
-            vpc=self.vpc,
-            public_subnet=self.public_subnet,
-            private_subnet=self.private_subnet,
-            protected_subnet=self.protected_subnet,
-            k8s_tags=self.k8S_tag,
-            igw=self.igw,
-            public_rtb=self.public_rtb,
-            private_rtb=self.private_rtb,
-            protected_rtb=self.protected_rtb,
-            nat=self.nat,
-            s3_gateway_ep=self.s3_gateway_ep
-        )
-        yaml_file.create_yaml()
+        # Choose deployment method using Boto3 or CloudFormation with YAML.
+        if self.get_deployment_method():  # Using Cloudformation with YAML
+            # create template yaml file
+            yaml_file = CreateYAML(
+                region=self.region,
+                vpc=self.vpc,
+                public_subnet=self.public_subnet,
+                private_subnet=self.private_subnet,
+                protected_subnet=self.protected_subnet,
+                k8s_tags=self.k8S_tag,
+                igw=self.igw,
+                public_rtb=self.public_rtb,
+                private_rtb=self.private_rtb,
+                protected_rtb=self.protected_rtb,
+                nat=self.nat,
+                s3_gateway_ep=self.s3_gateway_ep
+            )
+            yaml_file.create_yaml()
+
+        else:  # Using Boto3 Directly
+            DeployBoto3(
+                region=self.region,
+                vpc=self.vpc,
+                public_subnet=self.public_subnet,
+                private_subnet=self.private_subnet,
+                protected_subnet=self.protected_subnet,
+                k8s_tags=self.k8S_tag,
+                igw=self.igw,
+                public_rtb=self.public_rtb,
+                private_rtb=self.private_rtb,
+                protected_rtb=self.protected_rtb,
+                nat=self.nat,
+                s3_gateway_ep=self.s3_gateway_ep
+            )
 
     def choose_region(self):
         questions = [
             List(
                 name='region',
                 message='Choose region',
-                choices=[
-                    ('us-east-1 (N. Virginia)', 'us-east-1'),
-                    ('us-east-2 (Ohio)', 'us-east-2'),
-                    ('us-west-1 (N. California)', 'us-west-1'),
-                    ('us-west-2 (Oregon)', 'us-west-2'),
-                    ('ap-south-1 (Mumbai)', 'ap-south-1'),
-                    ('ap-northeast-3 (Osaka)', 'ap-northeast-3'),
-                    ('ap-northeast-2 (Seoul)', 'ap-northeast-2'),
-                    ('ap-southeast-1 (Singapore)', 'ap-southeast-1'),
-                    ('ap-southeast-2 (Sydney)', 'ap-southeast-2'),
-                    ('ap-northeast-1 (Tokyo)', 'ap-northeast-1'),
-                    ('ca-central-1 (Canada Central)', 'ca-central-1'),
-                    ('eu-central-1 (Frankfurt)', 'eu-central-1'),
-                    ('eu-west-1 (Ireland)', 'eu-west-1'),
-                    ('eu-west-2 (London)', 'eu-west-2'),
-                    ('eu-west-3 (Paris)', 'eu-west-3'),
-                    ('eu-north-1 (Stockholm)', 'eu-north-1'),
-                    ('sa-east-1 (Sao Paulo)', 'sa-east-1')
-                ]
+                choices=get_regions()
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.region = answer.get('region')
+        self.az_list = get_azs(self.region)
 
     def set_vpc(self):
         questions = [
@@ -140,7 +158,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.vpc = answer
 
         # set only vpc cidr in global variable
@@ -156,7 +174,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
         # required public subnets
         if answer['required']:
@@ -168,7 +186,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
             for i in range(0, int(answer['count'])):
                 questions = [
@@ -185,11 +203,11 @@ class Command:
                     List(
                         name='az',
                         message='Public Subnet {} AZ'.format(i + 1),
-                        choices=get_azs(self.region)
+                        choices=self.az_list
                     )
                 ]
 
-                subnet_answer = prompt(questions=questions)
+                subnet_answer = prompt(questions=questions, raise_keyboard_interrupt=True)
                 self.public_subnet.append(subnet_answer)
                 self.subnet_cidrs.append(subnet_answer['cidr'])
 
@@ -205,7 +223,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
         # required private subnets
         if answer['required']:
@@ -217,7 +235,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
             for i in range(0, int(answer['count'])):
                 questions = [
@@ -234,11 +252,11 @@ class Command:
                     List(
                         name='az',
                         message='Private Subnet {} AZ'.format(i + 1),
-                        choices=get_azs(self.region)
+                        choices=self.az_list
                     )
                 ]
 
-                subnet_answer = prompt(questions=questions)
+                subnet_answer = prompt(questions=questions, raise_keyboard_interrupt=True)
                 self.private_subnet.append(subnet_answer)
                 self.subnet_cidrs.append(subnet_answer['cidr'])
 
@@ -254,7 +272,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
         if answer['required']:  # required protected subnets
             questions = [
@@ -265,7 +283,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
             for i in range(0, int(answer['count'])):
                 questions = [
@@ -282,11 +300,11 @@ class Command:
                     List(
                         name='az',
                         message='Protected Subnet {} AZ'.format(i + 1),
-                        choices=get_azs(self.region)
+                        choices=self.az_list
                     )
                 ]
 
-                subnet_answer = prompt(questions=questions)
+                subnet_answer = prompt(questions=questions, raise_keyboard_interrupt=True)
                 self.protected_subnet.append(subnet_answer)
                 self.subnet_cidrs.append(subnet_answer['cidr'])
 
@@ -302,7 +320,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.k8S_tag = answer['k8s-tag']
 
     def set_internet_gateway(self):
@@ -314,7 +332,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.igw = answer['name']
 
     def set_elastic_ip(self):
@@ -327,7 +345,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.eip.append(answer['name'])
 
     def set_nat_gateway(self):
@@ -354,7 +372,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.nat.append(answer)
 
     def set_public_rtb(self):
@@ -366,7 +384,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.public_rtb = answer['name']
 
     def set_private_rtb(self):
@@ -396,7 +414,7 @@ class Command:
             else:
                 pass
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.private_rtb.append(answer)
 
     def set_protected_rtb(self):
@@ -408,7 +426,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.protected_rtb = answer['name']
 
     def set_s3_gateway(self):
@@ -432,7 +450,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
         if answer['required']:
             questions = [
@@ -443,7 +461,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.s3_gateway_ep = answer
 
     def print_tables(self):
@@ -466,3 +484,19 @@ class Command:
         print_table.print_igw(igw=self.igw)
         print_table.print_nat(nat=self.nat)
         print_table.print_s3_ep(s3_gateway_ep=self.s3_gateway_ep)
+
+    def get_deployment_method(self):
+        questions = [
+            List(
+                name='method',
+                message='Choose deployment method',
+                choices=[
+                    ('Using CloudFormation with YAML', True),
+                    ('Using Boto3 Directly', False)
+                ]
+            )
+        ]
+
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
+
+        return answer.get('method')

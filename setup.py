@@ -1,4 +1,8 @@
 from setuptools import setup, find_packages
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
 
 requires = [
     'ansicon==1.89.0',
@@ -17,7 +21,7 @@ requires = [
 
 setup(
     name='aws-vpc-cli',
-    version='0.1.2',
+    version='0.2.1',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
     author_email='marcus16-kang@outlook.com',
@@ -33,5 +37,7 @@ setup(
     url='https://github.com/marcus16-kang/vpc-stack-generator-cli',
     project_urls={
         'Source': 'https://github.com/marcus16-kang/vpc-stack-generator-cli'
-    }
+    },
+    long_description=long_description,
+    long_description_content_type='text/markdown'
 )

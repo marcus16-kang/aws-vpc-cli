@@ -1,5 +1,7 @@
 import ipaddr
 from pyfiglet import Figlet
+import boto3
+from botocore.config import Config
 
 
 def print_figlet():
@@ -12,97 +14,64 @@ def cidr_overlapped(cidr1, cidr2):
     return ipaddr.IPNetwork(cidr1).overlaps(ipaddr.IPNetwork(cidr2))
 
 
-def get_azs(region):
-    az_lists = {
-        'us-east-1': [
-            'us-east-1a',
-            'us-east-1b',
-            'us-east-1c',
-            'us-east-1d',
-            'us-east-1e',
-            'us-east-1f'
-        ],
-        'us-east-2': [
-            'us-east-2a',
-            'us-east-2b',
-            'us-east-2c'
-        ],
-        'us-west-1': [
-            'us-west-1a',
-            'us-west-1c'
-        ],
-        'us-west-2': [
-            'us-west-2a',
-            'us-west-2b',
-            'us-west-2c',
-            'us-west-2d'
-        ],
-        'ap-south-1': [
-            'ap-south-1a',
-            'ap-south-1b',
-            'ap-south-1c'
-        ],
-        'ap-northeast-3': [
-            'ap-northeast-3a',
-            'ap-northeast-3b',
-            'ap-northeast-3c'
-        ],
-        'ap-northeast-2': [
-            'ap-northeast-2a',
-            'ap-northeast-2b',
-            'ap-northeast-2c',
-            'ap-northeast-2d'
-        ],
-        'ap-southeast-1': [
-            'ap-southeast-1a',
-            'ap-southeast-1b',
-            'ap-southeast-1c'
-        ],
-        'ap-southeast-2': [
-            'ap-southeast-2a',
-            'ap-southeast-2b',
-            'ap-southeast-2c'
-        ],
-        'ap-northeast-1': [
-            'ap-northeast-1a',
-            'ap-northeast-1c',
-            'ap-northeast-1d'
-        ],
-        'ca-central-1': [
-            'ca-central-1a',
-            'ca-central-1b',
-            'ca-central-1d'
-        ],
-        'eu-central-1': [
-            'eu-central-1a',
-            'eu-central-1b',
-            'eu-central-1c'
-        ],
-        'eu-west-1': [
-            'eu-west-1a',
-            'eu-west-1b',
-            'eu-west-1c'
-        ],
-        'eu-west-2': [
-            'eu-west-2a',
-            'eu-west-2b',
-            'eu-west-2c'
-        ],
-        'eu-west-3': [
-            'eu-west-3a',
-            'eu-west-3b',
-            'eu-west-3c'
-        ],
-        'eu-north-1': [
-            'eu-north-1a',
-            'eu-north-1b',
-            'eu-north-1c'
-        ],
-        'sa-east-1': [
-            'sa-east-1a',
-            'sa-east-1b',
-            'sa-east-1c'
-        ]
+def get_regions():
+    region_codes = {
+        'us-east-1': 'US East (N. Virginia)',
+        'us-east-2': 'US East (Ohio)',
+        'us-west-1': 'US West (N. California)',
+        'us-west-2': 'US West (Oregon)',
+        'ap-south-1': 'Asia Pacific (Mumbai)',
+        'ap-northeast-3': 'Asia Pacific (Osaka)',
+        'ap-northeast-2': 'Asia Pacific (Seoul)',
+        'ap-southeast-1': 'Asia Pacific (Singapore)',
+        'ap-southeast-2': 'Asia Pacific (Sydney)',
+        'ap-northeast-1': 'Asia Pacific (Tokyo)',
+        'ca-central-1': 'Canada (Central)',
+        'eu-central-1': 'Europe (Frankfurt)',
+        'eu-west-1': 'Europe (Ireland)',
+        'eu-west-2': 'Europe (London)',
+        'eu-west-3': 'Europe (Paris)',
+        'eu-north-1': 'Europe (Stockholm)',
+        'sa-east-1': 'South America (São Paulo)',
+        'af-south-1': 'Africa (Cape Town)',
+        'ap-east-1': 'Asia Pacific (Hong Kong)',
+        'ap-south-2': 'Asia Pacific (Hyderabad)',
+        'ap-southeast-3': 'Asia Pacific (Jakarta)',
+        'eu-south-1': 'Europe (Milan)',
+        'eu-south-2': 'Europe (Spain)',
+        'eu-central-2': 'Europe (Zurich)',
+        'me-south-1': 'Middle East (Bahrain)',
+        'me-central-1': 'Middle East (UAE)',
     }
 
-    return az_lists[region]
+    client = boto3.client('ec2', config=Config(region_name='us-east-1'))
+    response = client.describe_regions()
+    available_region = [item['RegionName'] for item in response['Regions']]
+
+    available_list = []
+
+    for region in region_codes:
+        if region in available_region:
+            available_list.append((
+                '{0:<14} {1}'.format(region, region_codes[region]),
+                region
+            ))
+
+    return available_list
+
+
+def get_azs(region):
+    client = boto3.client('ec2', config=Config(region_name='us-east-1'))
+    response = client.describe_availability_zones(
+        Filters=[
+            {
+                'Name': 'region-name',
+                'Values': [region]
+            }
+        ]
+    )
+
+    az_list = [item['ZoneName'] for item in response['AvailabilityZones']]
+    az_list.sort()
+
+    return az_list
