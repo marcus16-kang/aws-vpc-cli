@@ -2,6 +2,7 @@ from inquirer import prompt, List, Text, Confirm, Checkbox
 
 from vpc_cli.print_table import PrintTable
 from vpc_cli.create_yaml import CreateYAML
+from vpc_cli.deploy_cfn import DeployCfn
 from vpc_cli.tools import get_azs, print_figlet
 from vpc_cli.validators import name_validator, vpc_cidr_validator, subnet_count_validator, subnet_cidr_validator
 
@@ -95,6 +96,7 @@ class Command:
             s3_gateway_ep=self.s3_gateway_ep
         )
         yaml_file.create_yaml()
+        DeployCfn(region=self.region)
 
     def choose_region(self):
         questions = [
