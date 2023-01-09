@@ -8,7 +8,7 @@ from datetime import datetime
 from dateutil import tz
 from prettytable import PrettyTable
 
-from vpc_cli.validators import name_validator
+from vpc_cli.validators import stack_name_validator
 
 
 class DeployCfn:
@@ -40,7 +40,7 @@ class DeployCfn:
             Text(
                 name='name',
                 message='Type CloudFormation Stack name',
-                validate=lambda _, x: name_validator(x)
+                validate=lambda _, x: stack_name_validator(x)
             )
         ]
 
