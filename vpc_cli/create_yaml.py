@@ -32,7 +32,7 @@ class CreateYAML:
             protected_subnet=protected_subnet,
             set_k8s_tags=k8s_tags
         )
-        self.create_igw(igw=igw)
+        self.create_igw(igw=igw, public_subnet=public_subnet)
         self.create_route_tables(public_rtb=public_rtb, private_rtb=private_rtb, protected_rtb=protected_rtb)
         self.create_nat(nat=nat, private_rtb=private_rtb)
         self.create_s3_ep(s3_gateway_ep=s3_gateway_ep)
@@ -111,36 +111,37 @@ class CreateYAML:
                 self.protected_subnet_name.append(
                     {'cloudformation': 'ProtectedSubnet' + str(i), 'name': subnet['name']})
 
-    def create_igw(self, igw=None):
-        self.resources['IGW'] = {
-            'Type': 'AWS::EC2::InternetGateway',
-            'Properties': {
-                'Tags': [{'Key': 'Name', 'Value': igw}]
-            }
-        }
-        self.resources['IGWAttachmentVPC'] = {
-            'Type': 'AWS::EC2::VPCGatewayAttachment',
-            'Properties': {
-                'InternetGatewayId': {
-                    'Ref': 'IGW'
-                },
-                'VpcId': {
-                    'Ref': 'VPC'
+    def create_igw(self, igw=None, public_subnet=None):  # Create internet gateway when exists public subnet
+        if public_subnet:
+            self.resources['IGW'] = {
+                'Type': 'AWS::EC2::InternetGateway',
+                'Properties': {
+                    'Tags': [{'Key': 'Name', 'Value': igw}]
                 }
             }
-        }
-        self.resources['PublicRouteTableRouteIGW'] = {
-            'Type': 'AWS::EC2::Route',
-            'Properties': {
-                'DestinationCidrBlock': '0.0.0.0/0',
-                'GatewayId': {
-                    'Ref': 'IGW'
-                },
-                'RouteTableId': {
-                    'Ref': 'PublicRouteTable'
+            self.resources['IGWAttachmentVPC'] = {
+                'Type': 'AWS::EC2::VPCGatewayAttachment',
+                'Properties': {
+                    'InternetGatewayId': {
+                        'Ref': 'IGW'
+                    },
+                    'VpcId': {
+                        'Ref': 'VPC'
+                    }
                 }
             }
-        }
+            self.resources['PublicRouteTableRouteIGW'] = {
+                'Type': 'AWS::EC2::Route',
+                'Properties': {
+                    'DestinationCidrBlock': '0.0.0.0/0',
+                    'GatewayId': {
+                        'Ref': 'IGW'
+                    },
+                    'RouteTableId': {
+                        'Ref': 'PublicRouteTable'
+                    }
+                }
+            }
 
     def create_route_tables(self, public_rtb=None, private_rtb=None, protected_rtb=None):
         if public_rtb:
