@@ -15,11 +15,13 @@ class DeployCfn:
     client = None
     deploy = False
     name = ''
+    region = ''
 
     def __init__(
             self,
             region,
     ):
+        self.region = region
         self.ask_deployment()
         self.input_stack_name()
         self.deployment(self.name, region)
@@ -33,18 +35,18 @@ class DeployCfn:
             )
         ]
 
-        self.deploy = prompt(questions=questions)['required']
+        self.deploy = prompt(questions=questions, raise_keyboard_interrupt=True)['required']
 
     def input_stack_name(self):
         questions = [
             Text(
                 name='name',
                 message='Type CloudFormation Stack name',
-                validate=lambda _, x: stack_name_validator(x)
+                validate=lambda _, x: stack_name_validator(x, self.region)
             )
         ]
 
-        self.name = prompt(questions=questions)['name']
+        self.name = prompt(questions=questions, raise_keyboard_interrupt=True)['name']
 
     def deployment(self, name, region):
         if self.deploy:  # deploy using cloudformation
@@ -90,7 +92,7 @@ class DeployCfn:
                     events = self.client.describe_stack_events(StackName=self.name)['StackEvents']
                     if len(events) > event_count:  # new events
                         for i in range(0, len(events) - event_count):
-                            event = ' {:>11} | \x1b[{}{:>27}\x1b[0m | {:>40} | {}'.format(
+                            event = ' {:>11} | \x1b[{}{:<27}\x1b[0m | {:<40} | {}'.format(
                                 self.get_timestamp(events[i]['Timestamp']),
                                 self.get_color(events[i]['ResourceStatus']),
                                 events[i]['ResourceStatus'],
@@ -136,6 +138,7 @@ class DeployCfn:
         table.field_names = ['Logical ID', 'Physical ID', 'Type']
         table.vrules = 0
         table.hrules = 1
+        table.align = 'l'
         rows = []
 
         response = self.client.describe_stack_resources(StackName=self.name)['StackResources']

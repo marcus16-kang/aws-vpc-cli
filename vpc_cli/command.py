@@ -128,7 +128,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.region = answer.get('region')
 
     def set_vpc(self):
@@ -145,7 +145,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.vpc = answer
 
         # set only vpc cidr in global variable
@@ -161,7 +161,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
         # required public subnets
         if answer['required']:
@@ -173,7 +173,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
             for i in range(0, int(answer['count'])):
                 questions = [
@@ -194,7 +194,7 @@ class Command:
                     )
                 ]
 
-                subnet_answer = prompt(questions=questions)
+                subnet_answer = prompt(questions=questions, raise_keyboard_interrupt=True)
                 self.public_subnet.append(subnet_answer)
                 self.subnet_cidrs.append(subnet_answer['cidr'])
 
@@ -210,7 +210,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
         # required private subnets
         if answer['required']:
@@ -222,7 +222,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
             for i in range(0, int(answer['count'])):
                 questions = [
@@ -243,7 +243,7 @@ class Command:
                     )
                 ]
 
-                subnet_answer = prompt(questions=questions)
+                subnet_answer = prompt(questions=questions, raise_keyboard_interrupt=True)
                 self.private_subnet.append(subnet_answer)
                 self.subnet_cidrs.append(subnet_answer['cidr'])
 
@@ -259,7 +259,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
         if answer['required']:  # required protected subnets
             questions = [
@@ -270,7 +270,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
             for i in range(0, int(answer['count'])):
                 questions = [
@@ -291,7 +291,7 @@ class Command:
                     )
                 ]
 
-                subnet_answer = prompt(questions=questions)
+                subnet_answer = prompt(questions=questions, raise_keyboard_interrupt=True)
                 self.protected_subnet.append(subnet_answer)
                 self.subnet_cidrs.append(subnet_answer['cidr'])
 
@@ -307,7 +307,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.k8S_tag = answer['k8s-tag']
 
     def set_internet_gateway(self):
@@ -319,7 +319,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.igw = answer['name']
 
     def set_elastic_ip(self):
@@ -332,7 +332,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.eip.append(answer['name'])
 
     def set_nat_gateway(self):
@@ -359,7 +359,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.nat.append(answer)
 
     def set_public_rtb(self):
@@ -371,7 +371,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.public_rtb = answer['name']
 
     def set_private_rtb(self):
@@ -401,7 +401,7 @@ class Command:
             else:
                 pass
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.private_rtb.append(answer)
 
     def set_protected_rtb(self):
@@ -413,7 +413,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
         self.protected_rtb = answer['name']
 
     def set_s3_gateway(self):
@@ -437,7 +437,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions=questions)
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
 
         if answer['required']:
             questions = [
@@ -448,7 +448,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions=questions)
+            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.s3_gateway_ep = answer
 
     def print_tables(self):
@@ -481,7 +481,7 @@ class Command:
             )
         ]
 
-        answer = prompt(questions)
+        answer = prompt(questions, raise_keyboard_interrupt=True)
 
         if answer['deploy']:
             questions = [
@@ -492,7 +492,7 @@ class Command:
                 )
             ]
 
-            answer = prompt(questions)
+            answer = prompt(questions, raise_keyboard_interrupt=True)
 
             try:
                 client = boto3.client('cloudformation', config=Config(region_name=self.region))
