@@ -22,7 +22,8 @@ class CreateYAML:
             private_rtb=None,
             protected_rtb=None,
             nat=None,
-            s3_gateway_ep=None
+            s3_gateway_ep=None,
+            flow_logs=''
     ):
         self.region = region
         self.create_vpc(vpc=vpc)
@@ -36,6 +37,7 @@ class CreateYAML:
         self.create_route_tables(public_rtb=public_rtb, private_rtb=private_rtb, protected_rtb=protected_rtb)
         self.create_nat(nat=nat, private_rtb=private_rtb)
         self.create_s3_ep(s3_gateway_ep=s3_gateway_ep)
+        self.create_flow_logs(flow_logs=flow_logs)
         self.create_yaml()
 
     def create_vpc(self, vpc):
@@ -292,6 +294,61 @@ class CreateYAML:
                     'VpcId': {
                         'Ref': 'VPC'
                     }
+                }
+            }
+
+    def create_flow_logs(self, flow_logs):
+        if flow_logs:
+            self.resources['FlowLogIamRole'] = {
+                'Type': 'AWS::IAM::Role',
+                'Properties': {
+                    'AssumeRolePolicyDocument': {
+                        'Version': '2012-10-17',
+                        'Statement': [
+                            {
+                                'Effect': 'Allow',
+                                'Principal': {
+                                    'Service': 'vpc-flow-logs.amazonaws.com'
+                                },
+                                'Action': 'sts:AssumeRole'
+                            }
+                        ]
+                    },
+                    'Path': '/',
+                    'Policies': [{
+                        'PolicyName': 'flow-logs-policy',
+                        'PolicyDocument': {
+                            'Version': '2012-10-17',
+                            'Statement': [
+                                {
+                                    'Effect': 'Allow',
+                                    'Action': [
+                                        'logs:CreateLogGroup',
+                                        'logs:CreateLogStream',
+                                        'logs:PutLogEvents',
+                                        'logs:DescribeLogGroups',
+                                        'logs:DescribeLogStreams'
+                                    ],
+                                    'Resource': '*'
+                                }
+                            ]
+                        }
+                    }],
+                    'RoleName': 'flow-logs-role'
+                }
+            }
+            self.resources['FlowLogs'] = {
+                'Type': 'AWS::EC2::FlowLog',
+                'Properties': {
+                    'DeliverLogsPermissionArn': {
+                        'Fn:GetAtt': 'FlowLogIamRole.Arn'
+                    },
+                    'LogGroupName': flow_logs,
+                    'ResourceId': {
+                        'Ref': 'VPC'
+                    },
+                    'ResourceType': 'vpc',
+                    'TrafficType': 'ALL'
                 }
             }
 

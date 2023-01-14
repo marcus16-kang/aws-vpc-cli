@@ -108,3 +108,15 @@ class PrintTable:
             self.table.add_row(['None'])
 
         print(self.table)
+
+    def print_flow_logs(self, flow_logs=''):
+        self.table.clear()
+        self.table.title = 'VPC Flow Logs'
+        self.table.field_names = ['Name']
+
+        if flow_logs:
+            self.table.add_row([flow_logs])
+        else:
+            self.table.add_row(['None'])
+
+        print(self.table)

@@ -22,6 +22,7 @@ class Command:
     private_subnet = []
     protected_subnet = []
     k8S_tag = False
+    flow_logs = ''
     igw = None
     eip = []
     nat = []
@@ -96,7 +97,8 @@ class Command:
             private_rtb=self.private_rtb,
             protected_rtb=self.protected_rtb,
             nat=self.nat,
-            s3_gateway_ep=self.s3_gateway_ep
+            s3_gateway_ep=self.s3_gateway_ep,
+            flow_logs=self.flow_logs
         )
         yaml_file.create_yaml()
         DeployCfn(region=self.region)
@@ -451,6 +453,28 @@ class Command:
             answer = prompt(questions=questions, raise_keyboard_interrupt=True)
             self.s3_gateway_ep = answer
 
+    def set_flow_logs(self):
+        question = [
+            Confirm(
+                name='enable',
+                message='Do you want to enable VPC Flow Logs?',
+                default=True
+            )
+        ]
+        answer = prompt(questions=question, raise_keyboard_interrupt=True)
+
+        if answer.get('enable'):
+            question = [
+                Text(
+                    name='log-group-name',
+                    message='Please type the log group name',
+                    validate=lambda x: name_validator(x),
+                    default=f'/aws/vpc/{self.vpc}'
+                )
+            ]
+            answer = prompt(questions=question, raise_keyboard_interrupt=True)
+            self.flow_logs = answer.get('log-group-name')
+
     def print_tables(self):
         print_table = PrintTable()
         print_table.print_vpc(self.region, self.vpc)
@@ -471,6 +495,7 @@ class Command:
         print_table.print_igw(igw=self.igw)
         print_table.print_nat(nat=self.nat)
         print_table.print_s3_ep(s3_gateway_ep=self.s3_gateway_ep)
+        print_table.print_flow_logs(flow_logs=self.flow_logs)
 
     def create_stack(self):
         questions = [
