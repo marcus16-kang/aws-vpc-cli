@@ -12,6 +12,7 @@ from vpc_cli.validators import name_validator, vpc_cidr_validator, subnet_count_
 
 class Command:
     # variables
+    project = None
     region = None
     vpc = {
         'name': None,
@@ -22,7 +23,10 @@ class Command:
     private_subnet = []
     protected_subnet = []
     k8S_tag = False
-    flow_logs = ''
+    flow_logs = {
+        'log-group': None,
+        'role-name': None
+    }
     igw = None
     eip = []
     nat = []
@@ -30,10 +34,12 @@ class Command:
     private_rtb = []
     protected_rtb = None
     s3_gateway_ep = None
+    dynamodb_gateway_ep = None
 
     # start command
     def __init__(self):
         print_figlet()
+        self.set_project_name()
         self.choose_region()
         self.set_vpc()
         self.set_public_subnet()
@@ -78,14 +84,18 @@ class Command:
         # skip creating s3 gateway endpoint wen all types of subnet hasn't nothing
         if len(self.public_subnet) or len(self.private_subnet) or len(self.protected_subnet):
             self.set_s3_gateway()
+            self.set_dynamodb_gateway()
         else:
-            print('Skip creating S3 Gateway Endpoint')
+            print('Skip creating S3 and DynamoDB Gateway Endpoint')
+
+        self.set_flow_logs()
 
         # print tables
         self.print_tables()
 
         # create template yaml file
         yaml_file = CreateYAML(
+            project=self.project,
             region=self.region,
             vpc=self.vpc,
             public_subnet=self.public_subnet,
@@ -98,10 +108,23 @@ class Command:
             protected_rtb=self.protected_rtb,
             nat=self.nat,
             s3_gateway_ep=self.s3_gateway_ep,
+            dynamodb_gateway_ep=self.dynamodb_gateway_ep,
             flow_logs=self.flow_logs
         )
         yaml_file.create_yaml()
-        DeployCfn(region=self.region)
+        DeployCfn(project=self.project, region=self.region)
+
+    def set_project_name(self):
+        questions = [
+            Text(
+                name='name',
+                message='Project name',
+                validate=lambda _, x: name_validator(x)
+            )
+        ]
+
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
+        self.project = answer['name']
 
     def choose_region(self):
         questions = [
@@ -109,23 +132,23 @@ class Command:
                 name='region',
                 message='Choose region',
                 choices=[
-                    ('us-east-1 (N. Virginia)', 'us-east-1'),
-                    ('us-east-2 (Ohio)', 'us-east-2'),
-                    ('us-west-1 (N. California)', 'us-west-1'),
-                    ('us-west-2 (Oregon)', 'us-west-2'),
-                    ('ap-south-1 (Mumbai)', 'ap-south-1'),
+                    ('us-east-1      (N. Virginia)', 'us-east-1'),
+                    ('us-east-2      (Ohio)', 'us-east-2'),
+                    ('us-west-1      (N. California)', 'us-west-1'),
+                    ('us-west-2      (Oregon)', 'us-west-2'),
+                    ('ap-south-1     (Mumbai)', 'ap-south-1'),
                     ('ap-northeast-3 (Osaka)', 'ap-northeast-3'),
                     ('ap-northeast-2 (Seoul)', 'ap-northeast-2'),
                     ('ap-southeast-1 (Singapore)', 'ap-southeast-1'),
                     ('ap-southeast-2 (Sydney)', 'ap-southeast-2'),
                     ('ap-northeast-1 (Tokyo)', 'ap-northeast-1'),
-                    ('ca-central-1 (Canada Central)', 'ca-central-1'),
-                    ('eu-central-1 (Frankfurt)', 'eu-central-1'),
-                    ('eu-west-1 (Ireland)', 'eu-west-1'),
-                    ('eu-west-2 (London)', 'eu-west-2'),
-                    ('eu-west-3 (Paris)', 'eu-west-3'),
-                    ('eu-north-1 (Stockholm)', 'eu-north-1'),
-                    ('sa-east-1 (Sao Paulo)', 'sa-east-1')
+                    ('ca-central-1   (Canada Central)', 'ca-central-1'),
+                    ('eu-central-1   (Frankfurt)', 'eu-central-1'),
+                    ('eu-west-1      (Ireland)', 'eu-west-1'),
+                    ('eu-west-2      (London)', 'eu-west-2'),
+                    ('eu-west-3      (Paris)', 'eu-west-3'),
+                    ('eu-north-1     (Stockholm)', 'eu-north-1'),
+                    ('sa-east-1      (Sao Paulo)', 'sa-east-1')
                 ]
             )
         ]
@@ -432,26 +455,38 @@ class Command:
             route_table_list.append({'name': self.protected_rtb})
 
         questions = [
-            Confirm(
-                name='required',
-                message='Do you want to create S3 GATEWAY ENDPOINT?',
-                default=True
+            Checkbox(
+                name='route-table',
+                message='Select S3 Gateway Endpoint Route Tables',
+                choices=[d['name'] for d in route_table_list]
             )
         ]
 
         answer = prompt(questions=questions, raise_keyboard_interrupt=True)
+        self.s3_gateway_ep = answer
 
-        if answer['required']:
-            questions = [
-                Checkbox(
-                    name='route-table',
-                    message='Select Route Tables',
-                    choices=[d['name'] for d in route_table_list]
-                )
-            ]
+    def set_dynamodb_gateway(self):
+        route_table_list = []
 
-            answer = prompt(questions=questions, raise_keyboard_interrupt=True)
-            self.s3_gateway_ep = answer
+        if self.public_rtb:
+            route_table_list.append({'name': self.public_rtb})
+
+        if self.private_rtb:
+            for rtb in self.private_rtb:
+                route_table_list.append({'name': rtb['name']})
+
+        if self.protected_rtb:
+            route_table_list.append({'name': self.protected_rtb})
+        questions = [
+            Checkbox(
+                name='route-table',
+                message='Select DynamoDB Gateway Endpoint Route Tables',
+                choices=[d['name'] for d in route_table_list]
+            )
+        ]
+
+        answer = prompt(questions=questions, raise_keyboard_interrupt=True)
+        self.dynamodb_gateway_ep = answer
 
     def set_flow_logs(self):
         question = [
@@ -468,12 +503,21 @@ class Command:
                 Text(
                     name='log-group-name',
                     message='Please type the log group name',
-                    validate=lambda x: name_validator(x),
-                    default=f'/aws/vpc/{self.vpc}'
-                )
+                    validate=lambda _, x: name_validator(x),
+                    default=f'/aws/vpc/{self.vpc["name"]}'
+                ),
+                Text(
+                    name='log-group-role-name',
+                    message='Please type the log group IAM role name',
+                    validate=lambda _, x: name_validator(x),
+                    default=f'{self.vpc["name"]}-flow-logs-role'
+                ),
             ]
             answer = prompt(questions=question, raise_keyboard_interrupt=True)
-            self.flow_logs = answer.get('log-group-name')
+            self.flow_logs = {
+                'log-group': answer.get('log-group-name'),
+                'role-name': answer.get('log-group-role-name'),
+            }
 
     def print_tables(self):
         print_table = PrintTable()
@@ -494,7 +538,7 @@ class Command:
         )
         print_table.print_igw(igw=self.igw)
         print_table.print_nat(nat=self.nat)
-        print_table.print_s3_ep(s3_gateway_ep=self.s3_gateway_ep)
+        print_table.print_ep(s3_gateway_ep=self.s3_gateway_ep, dynamodb_gateway_ep=self.dynamodb_gateway_ep)
         print_table.print_flow_logs(flow_logs=self.flow_logs)
 
     def create_stack(self):
