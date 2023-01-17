@@ -31,7 +31,7 @@ requires = [
 
 setup(
     name='aws-vpc-cli',
-    version='0.2.1',
+    version='0.3.1',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
     author_email='marcus16-kang@outlook.com',
