@@ -3,14 +3,15 @@ from setuptools import setup, find_packages
 requires = [
     'ansicon==1.89.0',
     'blessed==1.19.1',
-    'boto3==1.26.41',
-    'botocore==1.29.41',
+    'boto3==1.26.46',
+    'botocore==1.29.46',
     'colorama==0.4.6',
-    'inquirer==2.10.0',
+    'inquirer==3.1.2',
     'ipaddr==2.2.0',
     'jinxed==1.2.0',
     'jmespath==1.0.1',
-    'prettytable==3.4.1',
+    'plyer==2.1.0',
+    'prettytable==3.6.0',
     'psutil==5.9.4',
     'ptyprocess==0.7.0',
     'pyfiglet==0.8.post1',
@@ -30,7 +31,7 @@ requires = [
 
 setup(
     name='aws-vpc-cli',
-    version='0.2.1',
+    version='0.3.1',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
     author_email='marcus16-kang@outlook.com',

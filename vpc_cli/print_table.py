@@ -93,18 +93,38 @@ class PrintTable:
 
         print(self.table)
 
-    def print_s3_ep(
+    def print_ep(
             self,
             s3_gateway_ep=None,
+            dynamodb_gateway_ep=None
     ):
         self.table.clear()
-        self.table.title = 'S3 Gateway Endpoint'
-        self.table.field_names = ['Route Table']
+        self.table.title = 'Gateway Endpoints'
+        self.table.field_names = ['Type', 'Route Table']
 
         if s3_gateway_ep and s3_gateway_ep.get('route-table'):
-            for route_table in s3_gateway_ep['route-table']:
-                self.table.add_row([route_table])
+            self.table.add_row(['S3', '\n'.join(s3_gateway_ep['route-table'])])
+            # for route_table in s3_gateway_ep['route-table']:
+            #     self.table.add_row([route_table])
         else:
-            self.table.add_row(['None'])
+            self.table.add_row(['S3', 'None'])
+
+        if dynamodb_gateway_ep and dynamodb_gateway_ep.get('route-table'):
+            self.table.add_row(['DynamoDB', '\n'.join(dynamodb_gateway_ep['route-table'])])
+            # for route_table in s3_gateway_ep['route-table']:
+            #     self.table.add_row([route_table])
+        else:
+            self.table.add_row(['DynamoDB', 'None'])
+
+        print(self.table)
+
+    def print_flow_logs(self, flow_logs=None):
+        if flow_logs is None:
+            flow_logs = {'log-group': '', 'role-name': ''}
+        self.table.clear()
+        self.table.title = 'VPC Flow Logs'
+        self.table.field_names = ['Log Group Name', 'Role Name']
+
+        self.table.add_row([flow_logs.get('log-group'), flow_logs.get('role-name')])
 
         print(self.table)

@@ -3,6 +3,7 @@ import yaml
 
 class CreateYAML:
     resources = {}
+    project = ''
     region = None
     public_subnet_name = {}
     private_subnet_name = {}
@@ -11,6 +12,7 @@ class CreateYAML:
 
     def __init__(
             self,
+            project,
             region,
             vpc,
             public_subnet=None,
@@ -22,8 +24,11 @@ class CreateYAML:
             private_rtb=None,
             protected_rtb=None,
             nat=None,
-            s3_gateway_ep=None
+            s3_gateway_ep=None,
+            dynamodb_gateway_ep=None,
+            flow_logs=None
     ):
+        self.project = project
         self.region = region
         self.create_vpc(vpc=vpc)
         self.create_subnets(
@@ -36,6 +41,8 @@ class CreateYAML:
         self.create_route_tables(public_rtb=public_rtb, private_rtb=private_rtb, protected_rtb=protected_rtb)
         self.create_nat(nat=nat, private_rtb=private_rtb)
         self.create_s3_ep(s3_gateway_ep=s3_gateway_ep)
+        self.create_dynamodb_ep(dynamodb_gateway_ep=dynamodb_gateway_ep)
+        self.create_flow_logs(flow_logs=flow_logs)
         self.create_yaml()
 
     def create_vpc(self, vpc):
@@ -46,7 +53,7 @@ class CreateYAML:
                 'EnableDnsHostnames': True,
                 'EnableDnsSupport': True,
                 'InstanceTenancy': 'default',
-                'Tags': [{'Key': 'Name', 'Value': vpc['name']}]
+                'Tags': [{'Key': 'Name', 'Value': vpc['name']}, {'Key': 'project', 'Value': self.project}]
             }
         }
 
@@ -59,7 +66,7 @@ class CreateYAML:
                         'AvailabilityZone': subnet['az'],
                         'CidrBlock': subnet['cidr'],
                         'MapPublicIpOnLaunch': True,
-                        'Tags': [{'Key': 'Name', 'Value': subnet['name']}],
+                        'Tags': [{'Key': 'Name', 'Value': subnet['name']}, {'Key': 'project', 'Value': self.project}],
                         'VpcId': {
                             'Ref': 'VPC'
                         }
@@ -80,7 +87,7 @@ class CreateYAML:
                         'AvailabilityZone': subnet['az'],
                         'CidrBlock': subnet['cidr'],
                         'MapPublicIpOnLaunch': False,
-                        'Tags': [{'Key': 'Name', 'Value': subnet['name']}],
+                        'Tags': [{'Key': 'Name', 'Value': subnet['name']}, {'Key': 'project', 'Value': self.project}],
                         'VpcId': {
                             'Ref': 'VPC'
                         }
@@ -102,7 +109,7 @@ class CreateYAML:
                         'AvailabilityZone': subnet['az'],
                         'CidrBlock': subnet['cidr'],
                         'MapPublicIpOnLaunch': False,
-                        'Tags': [{'Key': 'Name', 'Value': subnet['name']}],
+                        'Tags': [{'Key': 'Name', 'Value': subnet['name']}, {'Key': 'project', 'Value': self.project}],
                         'VpcId': {
                             'Ref': 'VPC'
                         }
@@ -116,7 +123,7 @@ class CreateYAML:
             self.resources['IGW'] = {
                 'Type': 'AWS::EC2::InternetGateway',
                 'Properties': {
-                    'Tags': [{'Key': 'Name', 'Value': igw}]
+                    'Tags': [{'Key': 'Name', 'Value': igw}, {'Key': 'project', 'Value': self.project}]
                 }
             }
             self.resources['IGWAttachmentVPC'] = {
@@ -149,7 +156,7 @@ class CreateYAML:
             self.resources['PublicRouteTable'] = {
                 'Type': 'AWS::EC2::RouteTable',
                 'Properties': {
-                    'Tags': [{'Key': 'Name', 'Value': public_rtb}],
+                    'Tags': [{'Key': 'Name', 'Value': public_rtb}, {'Key': 'project', 'Value': self.project}],
                     'VpcId': {
                         'Ref': 'VPC'
                     }
@@ -178,7 +185,7 @@ class CreateYAML:
                 self.resources['PrivateRouteTable' + str(i)] = {
                     'Type': 'AWS::EC2::RouteTable',
                     'Properties': {
-                        'Tags': [{'Key': 'Name', 'Value': rtb['name']}],
+                        'Tags': [{'Key': 'Name', 'Value': rtb['name']}, {'Key': 'project', 'Value': self.project}],
                         'VpcId': {
                             'Ref': 'VPC'
                         }
@@ -209,7 +216,7 @@ class CreateYAML:
             self.resources['ProtectRouteTable'] = {
                 'Type': 'AWS::EC2::RouteTable',
                 'Properties': {
-                    'Tags': [{'Key': 'Name', 'Value': protected_rtb}],
+                    'Tags': [{'Key': 'Name', 'Value': protected_rtb}, {'Key': 'project', 'Value': self.project}],
                     'VpcId': {
                         'Ref': 'VPC'
                     }
@@ -239,7 +246,7 @@ class CreateYAML:
             self.resources['EIP' + str(i)] = {
                 'Type': 'AWS::EC2::EIP',
                 'Properties': {
-                    'Tags': [{'Key': 'Name', 'Value': _nat['eip']}],
+                    'Tags': [{'Key': 'Name', 'Value': _nat['eip']}, {'Key': 'project', 'Value': self.project}],
                 }
             }
 
@@ -255,7 +262,7 @@ class CreateYAML:
                     'SubnetId': {
                         'Ref': subnet_cfn_name
                     },
-                    'Tags': [{'Key': 'Name', 'Value': _nat['name']}]
+                    'Tags': [{'Key': 'Name', 'Value': _nat['name']}, {'Key': 'project', 'Value': self.project}]
                 }
             }
 
@@ -295,6 +302,83 @@ class CreateYAML:
                 }
             }
 
+    def create_dynamodb_ep(self, dynamodb_gateway_ep):
+        if dynamodb_gateway_ep and dynamodb_gateway_ep.get('route-table'):
+            rtb_list = []
+
+            for rtb in dynamodb_gateway_ep['route-table']:
+                rtb_name = next(item for item in self.rtb_name if item['name'] == rtb)
+                rtb_list.append({'Ref': rtb_name['cloudformation']})
+
+            self.resources['DynamoDBEP'] = {
+                'Type': 'AWS::EC2::VPCEndpoint',
+                'Properties': {
+                    'RouteTableIds': rtb_list,
+                    'ServiceName': 'com.amazonaws.{}.dynamodb'.format(self.region),
+                    'VpcId': {
+                        'Ref': 'VPC'
+                    }
+                }
+            }
+
+    def create_flow_logs(self, flow_logs):
+        if flow_logs:
+            self.resources['FlowLogIamRole'] = {
+                'Type': 'AWS::IAM::Role',
+                'Properties': {
+                    'AssumeRolePolicyDocument': {
+                        'Version': '2012-10-17',
+                        'Statement': [
+                            {
+                                'Effect': 'Allow',
+                                'Principal': {
+                                    'Service': 'vpc-flow-logs.amazonaws.com'
+                                },
+                                'Action': 'sts:AssumeRole'
+                            }
+                        ]
+                    },
+                    'Path': '/',
+                    'Policies': [{
+                        'PolicyName': 'flow-logs-policy',
+                        'PolicyDocument': {
+                            'Version': '2012-10-17',
+                            'Statement': [
+                                {
+                                    'Effect': 'Allow',
+                                    'Action': [
+                                        'logs:CreateLogGroup',
+                                        'logs:CreateLogStream',
+                                        'logs:PutLogEvents',
+                                        'logs:DescribeLogGroups',
+                                        'logs:DescribeLogStreams'
+                                    ],
+                                    'Resource': '*'
+                                }
+                            ]
+                        }
+                    }],
+                    'RoleName': flow_logs.get('role-name'),
+                    'Tags': [{'Key': 'Name', 'Value': flow_logs.get('role-name')},
+                             {'Key': 'project', 'Value': self.project}]
+                }
+            }
+            self.resources['FlowLogs'] = {
+                'Type': 'AWS::EC2::FlowLog',
+                'Properties': {
+                    'DeliverLogsPermissionArn': {
+                        'Fn::GetAtt': 'FlowLogIamRole.Arn'
+                    },
+                    'LogGroupName': flow_logs.get('log-group'),
+                    'ResourceId': {
+                        'Ref': 'VPC'
+                    },
+                    'ResourceType': 'VPC',
+                    'TrafficType': 'ALL',
+                    'Tags': [{'Key': 'project', 'Value': self.project}]
+                }
+            }
+
     def create_yaml(self):
         template = {
             'AWSTemplateFormatVersion': '2010-09-09',
@@ -303,7 +387,7 @@ class CreateYAML:
         }
 
         try:
-            with open('template.yaml', 'w') as f:
+            with open('vpc.yaml', 'w') as f:
                 yaml.dump(template, f)
 
         except Exception as e:
