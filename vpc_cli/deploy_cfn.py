@@ -1,5 +1,4 @@
 import os
-import time
 import boto3
 from botocore.config import Config
 from inquirer import prompt, Confirm, Text
@@ -7,6 +6,7 @@ from datetime import datetime
 from dateutil import tz
 from prettytable import PrettyTable
 from plyer import notification
+from cfn_visualizer import visualizer
 
 import vpc_cli
 from vpc_cli.validators import stack_name_validator
@@ -63,7 +63,6 @@ class DeployCfn:
                 Capabilities=['CAPABILITY_NAMED_IAM'],
             )
             stack_id = response['StackId']
-            event_count = 0
 
             while True:
                 # 1. get stack status
@@ -85,13 +84,13 @@ class DeployCfn:
                             region, stack_id) +
                         '\x1b[0m')
 
-                    notification.notify(
-                        title='Failed!',
-                        message=f'{self.name} creation failed.',
-                        app_name=f'VPC CLI',
-                        app_icon=f'{os.path.dirname(vpc_cli.__file__)}/assets/logo.ico',
-                        timeout=0
-                    )
+                    # notification.notify(
+                    #     title='Failed!',
+                    #     message=f'{self.name} creation failed.',
+                    #     app_name=f'VPC CLI',
+                    #     app_icon=f'{os.path.dirname(vpc_cli.__file__)}/assets/logo.ico',
+                    #     timeout=0
+                    # )
 
                     break
 
@@ -111,20 +110,7 @@ class DeployCfn:
                     break
 
                 else:
-                    events = self.client.describe_stack_events(StackName=self.name)['StackEvents']
-                    if len(events) > event_count:  # new events
-                        for i in range(0, len(events) - event_count):
-                            event = ' {:>11} | \x1b[{}{:<27}\x1b[0m | {:<40} | {}'.format(
-                                self.get_timestamp(events[i]['Timestamp']),
-                                self.get_color(events[i]['ResourceStatus']),
-                                events[i]['ResourceStatus'],
-                                events[i]['ResourceType'],
-                                events[i].get('ResourceStatusReason', ''))
-                            print(event)
-
-                            event_count = len(events)
-
-                    time.sleep(1)
+                    visualizer(client=self.client, stack_name=self.name)
 
         else:
             print('Done!\n\n')
