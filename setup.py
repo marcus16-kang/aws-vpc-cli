@@ -2,6 +2,7 @@ from setuptools import setup, find_packages
 
 requires = [
     'ansicon==1.89.0',
+    'aws-cloudformation-visualizer==0.0.2',
     'blessed==1.19.1',
     'boto3==1.26.46',
     'botocore==1.29.46',
@@ -31,7 +32,7 @@ requires = [
 
 setup(
     name='aws-vpc-cli',
-    version='0.3.1',
+    version='0.3.2',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
     author_email='marcus16-kang@outlook.com',
