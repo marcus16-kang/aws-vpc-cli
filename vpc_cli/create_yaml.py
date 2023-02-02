@@ -139,6 +139,7 @@ class CreateYAML:
             }
             self.resources['PublicRouteTableRouteIGW'] = {
                 'Type': 'AWS::EC2::Route',
+                'DependsOn': 'IGWAttachmentVPC',
                 'Properties': {
                     'DestinationCidrBlock': '0.0.0.0/0',
                     'GatewayId': {
