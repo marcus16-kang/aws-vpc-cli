@@ -32,7 +32,7 @@ requires = [
 
 setup(
     name='aws-vpc-cli',
-    version='0.3.2',
+    version='0.4.1',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
     author_email='marcus16-kang@outlook.com',
@@ -48,5 +48,6 @@ setup(
     url='https://github.com/marcus16-kang/vpc-stack-generator-cli',
     project_urls={
         'Source': 'https://github.com/marcus16-kang/vpc-stack-generator-cli'
-    }
+    },
+    include_package_data=True
 )
