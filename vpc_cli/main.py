@@ -14,9 +14,11 @@ def get_arguments():
     return {'version': True if show_version is not None else False}
 
 
-def main(option):
+def main():
     try:
-        if option['version']:
+        options = get_arguments()
+
+        if options['version']:
             print(f'vpc-cli v{VERSION}')
 
         else:
@@ -28,5 +30,4 @@ def main(option):
 
 
 if __name__ == '__main__':
-    options = get_arguments()
-    main(options)
+    main()
