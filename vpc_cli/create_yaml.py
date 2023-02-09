@@ -323,7 +323,7 @@ class CreateYAML:
             }
 
     def create_flow_logs(self, flow_logs):
-        if flow_logs:
+        if flow_logs.get('log-group', None) is not None and flow_logs.get('role-name', None) is not None:
             self.resources['FlowLogIamRole'] = {
                 'Type': 'AWS::IAM::Role',
                 'Properties': {

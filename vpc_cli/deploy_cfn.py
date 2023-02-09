@@ -99,13 +99,13 @@ class DeployCfn:
                     self.print_table()
                     print('\x1b[92m' + 'Success!' + '\x1b[0m')
 
-                    notification.notify(
-                        title='Success!',
-                        message=f'{self.name} creation successful.',
-                        app_name=f'VPC CLI',
-                        app_icon=f'{os.path.dirname(vpc_cli.__file__)}/assets/logo.ico',
-                        timeout=0
-                    )
+                    # notification.notify(
+                    #     title='Success!',
+                    #     message=f'{self.name} creation successful.',
+                    #     app_name=f'VPC CLI',
+                    #     app_icon=f'{os.path.dirname(vpc_cli.__file__)}/assets/logo.ico',
+                    #     timeout=0
+                    # )
 
                     break
 
