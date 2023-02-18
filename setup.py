@@ -19,12 +19,10 @@ requires = [
     'python-dateutil==2.8.2',
     'python-editor==1.0.4',
     'pytz==2022.7.1',
-    'pywin32==305',
     'PyYAML==6.0',
     'readchar==4.1.0.dev1',
     's3transfer==0.6.0',
     'six==1.16.0',
-    'tqdm==4.64.1',
     'urllib3==1.26.14',
     'wcwidth==0.2.6',
     'wexpect==4.0.1.dev9',
@@ -32,7 +30,7 @@ requires = [
 
 setup(
     name='aws-vpc-cli',
-    version='0.4.4',
+    version='0.4.5',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
     author_email='marcus16-kang@outlook.com',
