@@ -1,15 +1,12 @@
-import os
 import boto3
-from botocore.config import Config
 from inquirer import prompt, Confirm, Text
 from datetime import datetime
 from dateutil import tz
 from prettytable import PrettyTable
-from plyer import notification
 from cfn_visualizer import visualizer
 
-import vpc_cli
 from vpc_cli.validators import stack_name_validator
+from vpc_cli.tools import bright_red, bright_green
 
 
 class DeployCfn:
@@ -18,17 +15,20 @@ class DeployCfn:
     project = ''
     name = ''
     region = ''
+    profile = 'default'
 
     def __init__(
             self,
             project,
             region,
+            profile='default',
     ):
         self.project = project
         self.region = region
+        self.profile = profile
         self.ask_deployment()
         self.input_stack_name()
-        self.deployment(project, self.name, region)
+        self.deployment(project, self.name, region, profile)
 
     def ask_deployment(self):
         questions = [
@@ -46,15 +46,15 @@ class DeployCfn:
             Text(
                 name='name',
                 message='Type CloudFormation Stack name',
-                validate=lambda _, x: stack_name_validator(x, self.region)
+                validate=lambda _, x: stack_name_validator(x, self.region, self.profile)
             )
         ]
 
         self.name = prompt(questions=questions, raise_keyboard_interrupt=True)['name']
 
-    def deployment(self, project, name, region):
+    def deployment(self, project, name, region, profile='default'):
         if self.deploy:  # deploy using cloudformation
-            self.client = boto3.client('cloudformation', config=Config(region_name=region))
+            self.client = boto3.session.Session(profile_name=profile, region_name=region).client('cloudformation')
             response = self.client.create_stack(
                 StackName=name,
                 TemplateBody=self.get_template(),
@@ -74,38 +74,19 @@ class DeployCfn:
                 if stack_status in ['CREATE_FAILED', 'ROLLBACK_FAILED',
                                     'ROLLBACK_COMPLETE']:  # create failed
                     print()
-                    print('\x1b[91m' + 'Failed!' + '\x1b[0m')
+                    print(f'{bright_red("Failed!")}')
                     print()
-                    print('\x1b[91m' + 'Please check CloudFormation at here:' + '\x1b[0m')
+                    print(f'{bright_red("Please check CloudFormation at here:")}')
                     print()
                     print(
-                        '\x1b[91m' +
-                        'https://{0}.console.aws.amazon.com/cloudformation/home?region={0}#/stacks/stackinfo?stackId={1}'.format(
-                            region, stack_id) +
-                        '\x1b[0m')
-
-                    # notification.notify(
-                    #     title='Failed!',
-                    #     message=f'{self.name} creation failed.',
-                    #     app_name=f'VPC CLI',
-                    #     app_icon=f'{os.path.dirname(vpc_cli.__file__)}/assets/logo.ico',
-                    #     timeout=0
-                    # )
+                        f'{bright_red(f"https://{region}.console.aws.amazon.com/cloudformation/home?region={region}#/stacks/stackinfo?stackId={stack_id}")}')
 
                     break
 
                 elif stack_status == 'CREATE_COMPLETE':  # create complete successful
                     print()
                     self.print_table()
-                    print('\x1b[92m' + 'Success!' + '\x1b[0m')
-
-                    # notification.notify(
-                    #     title='Success!',
-                    #     message=f'{self.name} creation successful.',
-                    #     app_name=f'VPC CLI',
-                    #     app_icon=f'{os.path.dirname(vpc_cli.__file__)}/assets/logo.ico',
-                    #     timeout=0
-                    # )
+                    print(f'{bright_green("Success!")}')
 
                     break
 

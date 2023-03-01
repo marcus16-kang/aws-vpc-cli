@@ -1,7 +1,7 @@
 import re
 import boto3
-from botocore.config import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ProfileNotFound
+from inquirer.errors import ValidationError
 from vpc_cli.tools import cidr_overlapped
 
 
@@ -36,13 +36,17 @@ def subnet_cidr_validator(text, vpc_cidr, subnet_cidrs):
         return True
 
 
-def stack_name_validator(text, region):
+def stack_name_validator(text, region, profile='default'):
     if not len(text):
         return False
 
     else:
         try:
-            boto3.client('cloudformation', config=Config(region_name=region)).describe_stacks(StackName=text)
+            boto3.session.Session(profile_name=profile, region_name=region).client('cloudformation') \
+                .describe_stacks(StackName=text)
+
+        except ProfileNotFound as e:
+            raise ValidationError('', reason=e.__str__())
 
         except ClientError:  # stack doest
             return True
