@@ -5,7 +5,7 @@ from botocore.config import Config
 from vpc_cli.print_table import PrintTable
 from vpc_cli.create_yaml import CreateYAML
 from vpc_cli.deploy_cfn import DeployCfn
-from vpc_cli.tools import get_azs, print_figlet
+from vpc_cli.tools import get_azs, print_figlet, bright_cyan
 from vpc_cli.validators import name_validator, vpc_cidr_validator, subnet_count_validator, subnet_cidr_validator, \
     stack_name_validator
 
@@ -37,8 +37,9 @@ class Command:
     dynamodb_gateway_ep = None
 
     # start command
-    def __init__(self):
+    def __init__(self, profile):
         print_figlet()
+        self.print_profile(profile)
         self.set_project_name()
         self.choose_region()
         self.set_vpc()
@@ -112,7 +113,10 @@ class Command:
             flow_logs=self.flow_logs
         )
         yaml_file.create_yaml()
-        DeployCfn(project=self.project, region=self.region)
+        DeployCfn(project=self.project, region=self.region, profile=profile)
+
+    def print_profile(self, profile='default'):
+        print(f'Using AWS Profile {bright_cyan(profile)}')
 
     def set_project_name(self):
         questions = [

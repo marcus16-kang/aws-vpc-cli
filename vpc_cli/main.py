@@ -7,22 +7,21 @@ from vpc_cli import VERSION
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--version', '-v', nargs='*', dest='version')
+    parser.add_argument('-p', '--profile', dest='profile', action='store', default='default',
+                        help='use aws credential profile.')
+    parser.add_argument('-v', '--version', action='version', version=f'vpc-cli v{VERSION}')
 
-    show_version = parser.parse_args().version
+    args = parser.parse_args()
+    profile = args.profile
 
-    return {'version': True if show_version is not None else False}
+    return {'profile': profile}
 
 
 def main():
     try:
         options = get_arguments()
 
-        if options['version']:
-            print(f'vpc-cli v{VERSION}')
-
-        else:
-            Command()
+        Command(options['profile'])
 
     except KeyboardInterrupt:
         print('Cancelled by user.')

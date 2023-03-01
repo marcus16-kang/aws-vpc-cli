@@ -106,3 +106,15 @@ def get_azs(region):
     }
 
     return az_lists[region]
+
+
+def bright_red(text):
+    return f'\x1b[91m{text}\x1b[0m'
+
+
+def bright_green(text):
+    return f'\x1b[92m{text}\x1b[0m'
+
+
+def bright_cyan(text):
+    return f'\x1b[96m{text}\x1b[0m'
