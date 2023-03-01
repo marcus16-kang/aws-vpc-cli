@@ -36,7 +36,7 @@ setup(
     },
     install_requires=requires,
     # packages=find_packages(),
-    python_requires='>=3.8',
+    python_requires='>=3.7',
     url='https://github.com/marcus16-kang/vpc-stack-generator-cli',
     project_urls={
         'Source': 'https://github.com/marcus16-kang/vpc-stack-generator-cli'
