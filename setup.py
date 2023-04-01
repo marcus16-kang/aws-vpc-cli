@@ -4,9 +4,9 @@ requires = [
     'ansicon==1.89.0',
     'aws-cloudformation-visualizer==0.0.2',
     'blessed==1.20.0',
-    'boto3==1.26.81',
-    'botocore==1.29.81',
-    'inquirer==3.1.2',
+    'boto3==1.26.104',
+    'botocore==1.29.104',
+    'inquirer==3.1.3',
     'ipaddr==2.2.0',
     'jinxed==1.2.0',
     'jmespath==1.0.1',
@@ -24,7 +24,7 @@ requires = [
 
 setup(
     name='aws-vpc-cli',
-    version='0.5.3',
+    version='0.5.4',
     author='marcus16-kang',
     description='AWS VPC CloudFormation Stack Generator',
     author_email='marcus16-kang@outlook.com',
@@ -36,7 +36,7 @@ setup(
     },
     install_requires=requires,
     # packages=find_packages(),
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     url='https://github.com/marcus16-kang/vpc-stack-generator-cli',
     project_urls={
         'Source': 'https://github.com/marcus16-kang/vpc-stack-generator-cli'
