@@ -252,10 +252,10 @@ class CreateYAML:
             }
 
             # create nat gateway
-            subnet_cfn_name = self.public_subnet_name[_nat['subn' \
-                                                           'et']]
+            subnet_cfn_name = self.public_subnet_name[_nat['subnet']]
             self.resources['NAT' + str(i)] = {
                 'Type': 'AWS::EC2::NatGateway',
+                'DependsOn': 'PublicRouteTableRouteIGW',
                 'Properties': {
                     'AllocationId': {
                         'Fn::GetAtt': ['EIP' + str(i), 'AllocationId']
